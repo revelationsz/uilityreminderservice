@@ -1,0 +1,7 @@
+runtime: nodejs16
+
+service: service 
+
+handlers:
+  - url: /.*
+    script: server.js
