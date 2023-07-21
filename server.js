@@ -84,57 +84,41 @@ async function START_All_Utilities() { //create new OAuth2Client for each user o
 
 async function checkforNewUsers() {
 
-  axios.get(process.env.REQUEST_URL+'/findNewUsers', {
+
+  const axiosInstance = axios.create({
     headers: {
       Authorization: `Bearer ${process.env.API_KEY}`
     }
-  }).then((response) => {
-    const currentUserList = response.data
-    
-    if(currentUserList.length > 0) {
-      console.log(currentUserList)
+  });
+
+  axios.all([
+    axiosInstance.get(process.env.REQUEST_URL+'/findNewUsers'),
+    axiosInstance.get(process.env.REQUEST_URL+'/usersToDelete'),
+    axiosInstance.get(process.env.REQUEST_URL+'/usersToUpdate')
+  ]).then(axios.spread((newUsers, deleteUsers, toUpdate ) => {
+    // console.log(newUsers, deleteUsers, toUpdate)
+
+    const newUserData = newUsers.data
+    if(newUserData.length > 0) {
+      console.log(newUserData)
       console.log("new users")
-      currentUserList.forEach(user =>{
+      newUserData.forEach(user =>{
         initialize_Utility(user)
       })
     }
-  })
-
-
-}
-
-async function checkforDeletions() {
-
-  axios.delete(process.env.REQUEST_URL+'/usersToDelete', {
-    headers: {
-      Authorization: `Bearer ${process.env.API_KEY}`
-    }
-  }).then((response) => {
-    const currentUserList = response.data
-
-     if(currentUserList.length > 0) {
-      console.log(currentUserList)
-      currentUserList.forEach(async user =>{
+    
+    const deleteUserData = deleteUsers.data
+    console.log(deleteUserData)
+    if(deleteUserData != "no users to delete" && deleteUserData.length > 0) {
+      deleteUserData.forEach(async user =>{
         USERSET.delete(user.usersID)
       })
     }
-  })
 
- 
-}
-
-async function checkforUpdates(){
-
-  axios.get(process.env.REQUEST_URL+'/usersToUpdate', {     
-    headers: {
-      Authorization: `Bearer ${process.env.API_KEY}`
-    }
-  }).then((response) => {
-    const currentUserList = response.data
-    console.log(currentUserList)
-    if(currentUserList.length > 0) {
-      console.log(currentUserList)
-      currentUserList.forEach(async user =>{
+    const toUpdateData = toUpdate.data;
+    if(toUpdateData != "no new users" && toUpdateData.length > 0) {
+      console.log(toUpdateData)
+      toUpdateData.forEach(async user =>{
         console.log(user.usersID)
         user.OAuth2Client = USERSET.get(user.usersID).OAuth2Client
         user.electric = USERSET.get(user.usersID).electric
@@ -143,7 +127,10 @@ async function checkforUpdates(){
         USERSET.set(user.usersID, user)
       })
     }
-  })
+
+  }))
+
+
 
 }
 
@@ -314,21 +301,12 @@ const corsOptions = {
               check_All_Utilities()
               try{
                 checkforNewUsers()
-              } catch (e) {
-                console.log(e)
-              }
-              try{
-              checkforDeletions()
-              } catch (e) {
-                console.log(e)
-              }
-              try{
-              checkforUpdates()
+                console.log("t")
               } catch (e) {
                 console.log(e)
               }
             }
-          , 3001)
+          , 6000)
         })
       })
 
