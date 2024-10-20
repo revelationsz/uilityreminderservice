@@ -224,6 +224,8 @@ async function check_All_Utilities() {
       let body;
 
       //Make calls to update current email id for combo of bills that are new
+      const date = new Date().toLocaleDateString()
+
       if(gas !== undefined && electricity !== undefined) {
         e.electric = electricity.id
         e.gas = gas.id
@@ -232,8 +234,8 @@ async function check_All_Utilities() {
           electric: electricity.id,
           currentGasPayment: gas.balance,
           curentElectricPayment: electricity.balance,
-          gasDate: Date.now().toString(),
-          electricDate: Date.now().toString() 
+          gasDate: date,
+          electricDate: date
         }
       }
       else if (gas !== undefined && electricity === undefined) {
@@ -241,7 +243,7 @@ async function check_All_Utilities() {
         body = {
           gas: gas.id,
           currentGasPayment: gas.balance,
-          gasDate: Date.now()
+          gasDate: date
         }
       }
       else if (gas === undefined && electricity !== undefined) {        
@@ -249,7 +251,7 @@ async function check_All_Utilities() {
         body = {
             electric: electricity.id, 
             curentElectricPayment:electricity.balance,
-            electricDate:  Date.now()
+            electricDate: date
         }
       }
       //---------------------
