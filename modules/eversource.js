@@ -14,17 +14,17 @@ const getEmailInfo = async function(auth, Email_id) {
     });
     const data = res.data
     // console.log("test" + data)
-
     let parsedEmail
     let paymentInfo = data.raw.split('-')
     paymentInfo.forEach((value, index) => {
     try{
+      //console.log(value)
         let decoded = atob(value)
         decoded = decoded.replace(/<\/?[^>]+(>|$)/g, "").trim()
-        // console.log(index, " " , decoded)
+        //console.log(index, " " , decoded)
         parsedEmail += " " + decoded;
     } catch(e){
-      console.log(e)
+      //console.log(e)
     }
     })
     parsedEmail = parsedEmail.replace(/\s+/g, "").trim();
@@ -71,13 +71,13 @@ const checkforEmail = async function(auth){
         })
         if(res.length == 0 ||  res.data.messages == undefined) return;
         const lable = res.data.messages
-        console.log("lable" + lable)
+        console.log("lable" + lable[0])
         if(!lable) {
             console.log('No labels found.');
             return;
         }
         const id = lable[0].id
-        // if(id !== CURRENTID){ //we have a new email than current one in db
+        if(id !== CURRENTID){ //we have a new email than current one in db
           CURRENTID = id;
           const into = await getEmailInfo(auth, id) 
           if(into == null) return;
@@ -85,7 +85,7 @@ const checkforEmail = async function(auth){
           // const info = into.split('$')
           // const balance = info[1].split(' ')[0]
           return {balance: into, id:id}
-        // }    
+        }    
       } catch (err) { 
         console.log(err)
       }
