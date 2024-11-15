@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import {EVERSOURCE_EMAIL} from '../constants'
 
 /**
  * Lists the labels in the user's account.
@@ -24,7 +25,7 @@ const checkforEmail = async function(auth){
       const res = await gmail.users.messages.list({
           userId: 'me',
           maxResults: '1',
-          q: "from:noreply@notifications.eversource.com" 
+          q: "from:"+EVERSOURCE_EMAIL
       })
       const labels = res.data.messages
       console.log(labels); 
@@ -43,7 +44,7 @@ const checkforEmail = async function(auth){
         const res = await gmail.users.messages.list({
           userId: 'me',
           maxResults: '1',
-            q:  "from:noreply@notifications.eversource.com" 
+            q:  "from:"+EVERSOURCE_EMAIL
         })
         if(res.length == 0 ||  res.data.messages == undefined) return;
         const lable = res.data.messages
@@ -72,7 +73,7 @@ const checkforEmail = async function(auth){
     const res = await gmail.users.messages.list({
         userId: 'me',
         maxResults: '1',
-        q: "from:noreply@notifications.eversource.com" 
+        q: "from:"+EVERSOURCE_EMAIL
     })
     if(res.length == 0 || res.data.messages == undefined) return;
     const lable = res.data.messages[0].id

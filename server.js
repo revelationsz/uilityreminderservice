@@ -21,7 +21,7 @@ import twilio from 'twilio';
 import dotenv from 'dotenv/config';
 import { validateExpressRequest } from 'twilio/lib/webhooks/webhooks.js';
 import axios from 'axios';
-    
+import {decryptGCM} from 'crypto';
 
 let USERINFO;
 let USERSET;
@@ -57,12 +57,14 @@ async function START_All_Utilities() { //create new OAuth2Client for each user o
             const userAuth = response.data.userAuth
             const emailIds = response.data.emailIds
 
+            const dencypredRefreshToken = decryptGCM(userAuth.refresh_token);
+            const dencryptedAccessToken = decryptGCM(userAuth.access_token);
               
             const credentials = {
-              refresh_token: userAuth.refresh_token,
+              refresh_token: dencypredRefreshToken,
               scope: userAuth.scope,
               token_type: userAuth.token_type,
-              access_token: userAuth.access_token,
+              access_token: dencryptedAccessToken,
               expiry_date: userAuth.expiry_date
             }
             
@@ -151,12 +153,16 @@ async function initialize_Utility(e) {
          console.log(response.data)
          const userAuth = response.data
 
+         const dencypredRefreshToken = decryptGCM(userAuth.refresh_token);
+         const dencryptedAccessToken = decryptGCM(userAuth.access_token);
+           
          const credentials = {
-          access_token: userAuth.access_token,
-          refresh_token: userAuth.refresh_token,
-          scope: userAuth.scope,
-          token_type: userAuth.token_type,
-          expiry_date: userAuth.expiry_date}
+           refresh_token: dencypredRefreshToken,
+           scope: userAuth.scope,
+           token_type: userAuth.token_type,
+           access_token: dencryptedAccessToken,
+           expiry_date: userAuth.expiry_date
+         }         
         
           oAuth2Client.setCredentials(credentials)
     

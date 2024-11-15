@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-
+import {NATIONIALGRID_EMAIL} from '../constants'
 
 /**
  * Lists the labels in the user's account.
@@ -26,7 +26,7 @@ async function checkforEmail(auth){
     const res = await gmail.users.messages.list({
         userId: 'me',
         maxResults: '1',
-        q: "from:account@online-services.nationalgrid.com" 
+        q: "from:"+NATIONIALGRID_EMAIL 
     })
     const labels = res.data.messages
     if (!labels || labels.length === 0) {
@@ -45,7 +45,7 @@ async function checknewEmail(auth, CURRENTID){
       const res = await gmail.users.messages.list({
           userId: 'me',
           maxResults: '1',
-          q:  "from:account@online-services.nationalgrid.com"  
+          q:  "from:"+NATIONIALGRID_EMAIL  
       })
       if(res.length == 0 || res.data.messages == undefined) return;
       const lable = res.data.messages
@@ -70,7 +70,7 @@ async function onStart(auth){
   const res = await gmail.users.messages.list({
       userId: 'me',
       maxResults: '1',
-      q: "from:account@online-services.nationalgrid.com" 
+      q: "from:"+NATIONIALGRID_EMAIL 
   })
   if(res.length == 0 || res.data.messages == undefined) return;
   const lable = res.data.messages[0].id
