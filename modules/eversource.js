@@ -11,11 +11,35 @@ const getEmailInfo = async function(auth, Email_id) {
     const res = await gmail.users.messages.get({
       userId: 'me',
       id: Email_id,
+      format: 'raw'
     });
     const data = res.data
-    // console.log(res.data.snippet)
-    const check = data.snippet.split(' ')
-    return check[0] == "EBILL" ? data.snippet : null
+    // console.log("test" + data)
+    let parsedEmail
+    let paymentInfo = data.raw.split('-')
+    paymentInfo.forEach((value, index) => {
+    try{
+      //console.log(value)
+        let decoded = atob(value)
+        decoded = decoded.replace(/<\/?[^>]+(>|$)/g, "").trim()
+        //console.log(index, " " , decoded)
+        parsedEmail += " " + decoded;
+    } catch(e){
+      //console.log(e)
+    }
+    })
+    parsedEmail = parsedEmail.replace(/\s+/g, "").trim();
+    let billAmount = parsedEmail.split('$')
+    // if(billAmount.length == 1) return null
+    let finalAmount = "";
+    let index = 0;
+    while(/[0-9.]/.test(billAmount[1].charAt(index)) ){
+      console.log( billAmount[1].charAt(index))
+      if(billAmount[1].charAt(index) != " ") finalAmount += billAmount[1].charAt(index)
+      index++
+    }
+    console.log("final amount" + finalAmount)
+    return finalAmount  
   }
   
   
@@ -48,6 +72,7 @@ const checkforEmail = async function(auth){
         })
         if(res.length == 0 ||  res.data.messages == undefined) return;
         const lable = res.data.messages
+        console.log("lable" + lable[0])
         if(!lable) {
             console.log('No labels found.');
             return;
@@ -58,9 +83,9 @@ const checkforEmail = async function(auth){
           const into = await getEmailInfo(auth, id) 
           if(into == null) return;
           // console.log(into)
-          const info = into.split('$')
-          const balance = info[1].split(' ')[0]
-          return {balance: balance, id:id}
+          // const info = into.split('$')
+          // const balance = info[1].split(' ')[0]
+          return {balance: into, id:id}
         }    
       } catch (err) { 
         console.log(err)
@@ -75,7 +100,7 @@ const checkforEmail = async function(auth){
         maxResults: '1',
         q: "from:"+EVERSOURCE_EMAIL
     })
-    if(res.length == 0 || res.data.messages == undefined) return;
+    // if(res.length == 0 || res.data.messages == undefined) return;
     const lable = res.data.messages[0].id
     if(!lable) {
         console.log('No labels found.');

@@ -33,8 +33,9 @@ const client = new twilio(accountSid, authToken);
 
 async function START_All_Utilities() { //create new OAuth2Client for each user out of tokes stored in db
 
-    for(let [key, value] of USERSET.entries()) {
-      console.log(value)
+    for(let [key, value] of USERSET.entries()) { 
+      //console.log(value)
+      console.log('user')
       if(value.initialized) {
 
         if(value.toDelete == true) return
@@ -44,16 +45,16 @@ async function START_All_Utilities() { //create new OAuth2Client for each user o
           serverCredentials.client_secret,
           serverCredentials.redirect_uris[0]
         );
-        
+        // console.log("v1" , oAuth2Client)
         const userID = value.usersID
 
         axios.get(process.env.REQUEST_URL+'/startALL/'+userID, {
           headers: {
             Authorization: `Bearer ${process.env.API_KEY}`
           }
-        }).then((response) => {
+        }).then(async (response) => {
 
-            console.log(response.data)
+            // console.log(response.data)
             const userAuth = response.data.userAuth
             const emailIds = response.data.emailIds
 
@@ -70,13 +71,15 @@ async function START_All_Utilities() { //create new OAuth2Client for each user o
             
             oAuth2Client.setCredentials(credentials)
 
+            // console.log("v2 ", oAuth2Client)
+
             let temp = value
 
             temp.OAuth2Client = oAuth2Client
             temp.electric = emailIds.electric
             temp.gas = emailIds.gas
 
-            // console.log("temp", temp ,temp.OAuth2Client, temp.electric, temp.gas)
+           // console.log("temp", temp ,temp.OAuth2Client, temp.electric, temp.gas)
             USERSET.set(key, temp) 
         })
       
@@ -85,7 +88,6 @@ async function START_All_Utilities() { //create new OAuth2Client for each user o
 }
 
 async function checkforNewUsers() {
-
 
   const axiosInstance = axios.create({
     headers: {
@@ -98,7 +100,6 @@ async function checkforNewUsers() {
     axiosInstance.get(process.env.REQUEST_URL+'/usersToDelete'),
     axiosInstance.get(process.env.REQUEST_URL+'/usersToUpdate')
   ]).then(axios.spread((newUsers, deleteUsers, toUpdate ) => {
-    // console.log(newUsers, deleteUsers, toUpdate)
 
     const newUserData = newUsers.data
     if(newUserData.length > 0) {
@@ -110,7 +111,6 @@ async function checkforNewUsers() {
     }
     
     const deleteUserData = deleteUsers.data
-    console.log(deleteUserData)
     if(deleteUserData != "no users to delete" && deleteUserData.length > 0) {
       deleteUserData.forEach(async user =>{
         USERSET.delete(user.usersID)
@@ -132,14 +132,12 @@ async function checkforNewUsers() {
 
   }))
 
-
-
 }
 
 async function initialize_Utility(e) {
       console.log(e.usersID)
       
-      const oAuth2Client = new OAuth2Client(
+      const oAuth2Client = new google.auth.OAuth2(
         serverCredentials.client_id,
         serverCredentials.client_secret,
         serverCredentials.redirect_uris[0]
@@ -170,8 +168,9 @@ async function initialize_Utility(e) {
           const eversource = await onStartEversource(oAuth2Client)
           const nationalgrid = await onStartnationalGrid(oAuth2Client)
     
-          axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID,{eversource: eversource, nationalgrid: nationalgrid},
-           { headers: {
+          axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID,
+            { eversource: eversource, nationalgrid: nationalgrid, currentGasPayment: '', currentElectricPayment: '', gasDate: '', electricDate: ''},
+            { headers: {
               Authorization: `Bearer ${process.env.API_KEY}`
             }
           }).then((response) => {
@@ -201,67 +200,104 @@ async function initialize_Utility(e) {
 
 async function check_All_Utilities() {
   for(const [key, e] of  USERSET.entries()) {
-    if(e.initialized) {
-      console.log(e.OAuth2Client)
+
+    if(e.initialized && e.OAuth2Client) {
       const usersID = e.usersID
 
-      let x = Date.now()
-      if(e.electric == null ) return
-      const ESpayment = await checknewEmailEversource(e.OAuth2Client, e.electric)
-      const NGpayment = await checknewEmailnationalGrid(e.OAuth2Client, e.gas)
+      let x = Date.now()      
+
+      //Check for new utilties email
+      let electricity;
+      switch(e.electricProvider){
+        case "eversource":
+          console.log("test")
+          electricity = await checknewEmailEversource(e.OAuth2Client, e.electric)
+        default:
+      }
       
+      let gas;
+      switch(e.gasProvider){
+        case "National Grid":
+          // console.log("auth shit" , e.OAuth2Client);
+          gas = await checknewEmailnationalGrid(e.OAuth2Client, e.gas)
+        default:
+      }
+      //-----------------------
 
       console.log(Date.now()-x)
-      console.log("we have info?" + JSON.stringify(NGpayment) + " " + JSON.stringify(ESpayment) + " ")
-      if(NGpayment !== undefined && ESpayment !== undefined) {
-        e.electric = ESpayment.id
-        e.gas = NGpayment.id
-        
-        axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID, {gas: NGpayment.id, electric: ESpayment.id},
-        {headers: {
-          Authorization: `Bearer ${process.env.API_KEY}`
+      console.log("we have info?" + JSON.stringify(gas) + " " + JSON.stringify(electricity) + " ")
+
+      let body;
+
+      //Make calls to update current email id for combo of bills that are new
+      const date = new Date().toLocaleDateString()
+
+      if(gas !== undefined && electricity !== undefined) {
+        e.electric = electricity.id
+        e.gas = gas.id
+        body = {
+          gas: gas.id, 
+          electric: electricity.id,
+          currentGasPayment: gas.balance,
+          curentElectricPayment: electricity.balance,
+          gasDate: date,
+          electricDate: date
         }
-        }).then((response) => {
-            console.log(response.data)
-            requestMoney(e.phoneNumber, NGpayment.balance + ESpayment.balance, e.roommatesNumbs)
-
-        })
-
       }
-      else if (NGpayment !== undefined && ESpayment === undefined) {
-        e.gas = NGpayment.id
-    
-        axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID, {gas: NGpayment.id, electric: ESpayment.id},
-          {headers: {
-            Authorization: `Bearer ${process.env.API_KEY}`
-          }
-        }).then((response) => {
-            console.log(response.data)
-            requestMoney(e.phoneNumber, NGpayment.balance, e.roommatesNumbs)
-        })
+      else if (gas !== undefined && electricity === undefined) {
+        e.gas = gas.id
+        body = {
+          gas: gas.id,
+          currentGasPayment: gas.balance,
+          gasDate: date
+        }
+      }
+      else if (gas === undefined && electricity !== undefined) {        
+        e.electric = electricity.id
+        body = {
+            electric: electricity.id, 
+            curentElectricPayment:electricity.balance,
+            electricDate: date
+        }
+      }
+      //---------------------
+      
+      axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID, body,
+      {headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`
+      }
+      }).then((response) => {
+          console.log(response.data)
+          requestMoney(e.expoPushToken)
 
-      }
-      else if (NGpayment === undefined && ESpayment !== undefined) {        
-        e.electric = ESpayment.id
-       
-        axios.post(process.env.REQUEST_URL+'/newEmails/' + e.usersID, {gas: NGpayment.id, electric: ESpayment.id},
-          { headers: {
-            Authorization: `Bearer ${process.env.API_KEY}`
-          }
-        }).then((response) => {
-            console.log(response.data)
-            requestMoney(e.phoneNumber, ESpayment.balance, e.roommatesNumbs)
-        })
-      }
+      })
     }
   }
 }
 
-function requestMoney(usersPhoneNumber, total, roommates){
-  console.log("sending text for:" )
-  const perPerson = Math.ceil(total / roommates.length)
+function requestMoney(expoPushToken){
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    title: 'New Utilities Bill',
+    body: 'Click here to request your roommates for your bills!',
+    data: { someData: 'goes here' }, //figure this out 
+  };
 
-  client.message.create({body:`Total Utiltiies is ${total} with a amount of ${perPerson} per person`, from: '+18339653250',
+  axios.post('https://exp.host/--/api/v2/push/send', JSON.stringify(message), {
+    headers: {
+      Accept: 'application/json',
+      'Accept-encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+function twilioCall(usersPhoneNumber, total, roommates){
+  console.log("sending text for:" )
+  const perPerson = total / (roommates.length+1)
+  console.log(perPerson)
+  client.messages.create({body:`Total Utilities is ${total} with a amount of ${perPerson} per person`, from: '+18339653250',
   to: usersPhoneNumber}).then(message => console.log(message.sid));
 
   roommates.forEach(e => {
@@ -297,23 +333,22 @@ const corsOptions = {
         headers: {
           Authorization: `Bearer ${process.env.API_KEY}`
         }
-      }).then((response) => {
-        console.log(response.data)
+      }).then(async (response) => {
+        // console.log(response.data)
         USERINFO = response.data
         USERSET = new Map(USERINFO.map(info => [info.usersID, info]))
-        START_All_Utilities()
+        await START_All_Utilities()
         .then(() => {
           setInterval(() => {
               check_All_Utilities()
               try{
                 checkforNewUsers()
-                console.log("t")
               } catch (e) {
                 console.log(e)
               }
             }
           , 6000)
-        })
+       })
       })
 
     })
